@@ -33,8 +33,8 @@ export function LocationAutocomplete({
   const [isLoading, setIsLoading] = useState(false);
   const [inputValue, setInputValue] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
-  const placesService = useRef<google.maps.places.PlacesService | null>(null);
+  const autocompleteService = useRef<any>(null);
+  const placesService = useRef<any>(null);
 
   useEffect(() => {
     // Initialize Google Places API
@@ -91,9 +91,9 @@ export function LocationAutocomplete({
 
       autocompleteService.current.getPlacePredictions(
         request,
-        (predictions, status) => {
+        (predictions: any, status: any) => {
           setIsLoading(false);
-          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+          if (status === 'OK' && predictions) {
             setPredictions(predictions);
           } else {
             setPredictions([]);
