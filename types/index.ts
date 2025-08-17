@@ -204,7 +204,7 @@ export interface DashboardStats {
 
 export interface UserSession {
   user: Profile;
-  driver?: Driver;
+  driver: Driver | undefined;
   isAdmin: boolean;
   isDriver: boolean;
 }

@@ -1,8 +1,9 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { logError } from '@/utils/logger';
 import { Profile, Driver, UserSession } from '@/types';
 
 interface AuthContextType {
@@ -27,38 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [driver, setDriver] = useState<Driver | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        await loadUserData(session.user.id);
-      }
-      setLoading(false);
-    };
-
-    getInitialSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          setUser(session.user);
-          await loadUserData(session.user.id);
-        } else {
-          setUser(null);
-          setProfile(null);
-          setDriver(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const loadUserData = async (userId: string) => {
+  const loadUserData = useCallback(async (userId: string) => {
     try {
       // Load profile
       const { data: profileData, error: profileError } = await supabase
@@ -68,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single();
 
       if (profileError) {
-        console.error('Error loading profile:', profileError);
+        logError('Error loading profile', profileError, undefined, 'AuthProvider');
       } else {
         setProfile(profileData);
       }
@@ -85,15 +55,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .single();
 
         if (driverError) {
-          console.error('Error loading driver data:', driverError);
+          logError('Error loading driver data', driverError, undefined, 'AuthProvider');
         } else {
           setDriver(driverData);
         }
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
+      logError('Error loading user data', error as Error, undefined, 'AuthProvider');
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // Get initial session
+    const _getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        await loadUserData(session.user.id);
+      }
+      setLoading(false);
+    };
+
+    _getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (session?.user) {
+          setUser(session.user);
+          await loadUserData(session.user.id);
+        } else {
+          setUser(null);
+          setProfile(null);
+          setDriver(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [loadUserData]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -140,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .eq('id', user.id);
 
     if (!error) {
-      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      setProfile(prev => prev ? { ...prev, ...updates }: null);
     }
 
     return { error };
@@ -154,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const session: UserSession | null = user && profile ? {
     user: profile,
-    driver: driver || undefined,
+    driver: driver ?? undefined,
     isAdmin: profile.role === 'admin',
     isDriver: profile.role === 'driver',
   } : null;

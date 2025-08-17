@@ -4,8 +4,9 @@ import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { QueryProvider } from '@/components/providers/QueryProvider'
+import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 
-const inter = Inter({ subsets: ['latin'] })
+const _inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'Goa Taxi App - Book Your Ride in Goa',
@@ -113,7 +114,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>
+      <body className="font-sans">
         <QueryProvider>
           <AuthProvider>
             <div className="min-h-screen bg-gray-50">
@@ -143,6 +144,7 @@ export default function RootLayout({
                 },
               }}
             />
+            <InstallPrompt />
           </AuthProvider>
         </QueryProvider>
       </body>

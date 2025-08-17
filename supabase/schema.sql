@@ -355,6 +355,104 @@ CREATE POLICY "Drivers can update their own location" ON driver_locations
 CREATE POLICY "Users can view driver locations" ON driver_locations
     FOR SELECT USING (TRUE);
 
+-- Notifications table
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT DEFAULT 'system' CHECK (type IN ('booking', 'driver', 'system')),
+    data JSONB DEFAULT '{}',
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for notifications
+CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX idx_notifications_is_read ON notifications(is_read);
+CREATE INDEX idx_notifications_created_at ON notifications(created_at);
+
+-- Enable RLS on notifications
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+
+-- Notifications policies
+CREATE POLICY "Users can view their own notifications" ON notifications
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own notifications" ON notifications
+    FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own notifications" ON notifications
+    FOR DELETE USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can insert notifications" ON notifications
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE id = auth.uid() AND role = 'admin'
+        )
+    );
+
+-- Messages table (for real-time chat)
+CREATE TABLE messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sender_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    receiver_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for messages
+CREATE INDEX idx_messages_sender_id ON messages(sender_id);
+CREATE INDEX idx_messages_receiver_id ON messages(receiver_id);
+CREATE INDEX idx_messages_created_at ON messages(created_at);
+CREATE INDEX idx_messages_conversation ON messages(sender_id, receiver_id);
+
+-- Enable RLS on messages
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+-- Messages policies
+CREATE POLICY "Users can view messages they sent or received" ON messages
+    FOR SELECT USING (
+        auth.uid() = sender_id OR auth.uid() = receiver_id
+    );
+
+CREATE POLICY "Users can insert messages" ON messages
+    FOR INSERT WITH CHECK (auth.uid() = sender_id);
+
+CREATE POLICY "Users can update messages they sent" ON messages
+    FOR UPDATE USING (auth.uid() = sender_id);
+
+CREATE POLICY "Users can delete messages they sent" ON messages
+    FOR DELETE USING (auth.uid() = sender_id);
+
+-- Favorites table (for users to save favorite drivers)
+CREATE TABLE favorites (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    driver_id UUID REFERENCES drivers(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, driver_id)
+);
+
+-- Create indexes for favorites
+CREATE INDEX idx_favorites_user_id ON favorites(user_id);
+CREATE INDEX idx_favorites_driver_id ON favorites(driver_id);
+
+-- Enable RLS on favorites
+ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
+
+-- Favorites policies
+CREATE POLICY "Users can view their own favorites" ON favorites
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own favorites" ON favorites
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own favorites" ON favorites
+    FOR DELETE USING (auth.uid() = user_id);
+
 -- Insert default admin user (you should change this password)
 INSERT INTO auth.users (
     id,
@@ -376,3 +474,91 @@ INSERT INTO auth.users (
 
 -- Update the admin profile role
 UPDATE profiles SET role = 'admin' WHERE email = 'admin@goataxi.app';
+
+-- Push Subscriptions table (for PWA push notifications)
+CREATE TABLE push_subscriptions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    subscription JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for push_subscriptions
+CREATE INDEX idx_push_subscriptions_user_id ON push_subscriptions(user_id);
+CREATE INDEX idx_push_subscriptions_created_at ON push_subscriptions(created_at);
+
+-- Enable RLS on push_subscriptions
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- Push Subscriptions policies
+CREATE POLICY "Users can view their own push subscriptions" ON push_subscriptions
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own push subscriptions" ON push_subscriptions
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own push subscriptions" ON push_subscriptions
+    FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own push subscriptions" ON push_subscriptions
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Trigger to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_push_subscriptions_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_push_subscriptions_updated_at
+    BEFORE UPDATE ON push_subscriptions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_push_subscriptions_updated_at();
+
+-- Error Logs table (for error reporting and monitoring)
+CREATE TABLE error_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    error_name VARCHAR(255) NOT NULL,
+    error_message TEXT NOT NULL,
+    error_stack TEXT,
+    severity VARCHAR(20) CHECK (severity IN ('low', 'medium', 'high', 'critical')) DEFAULT 'medium',
+    context JSONB DEFAULT '{}',
+    tags JSONB DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for error_logs
+CREATE INDEX idx_error_logs_user_id ON error_logs(user_id);
+CREATE INDEX idx_error_logs_severity ON error_logs(severity);
+CREATE INDEX idx_error_logs_created_at ON error_logs(created_at);
+CREATE INDEX idx_error_logs_error_name ON error_logs(error_name);
+
+-- Enable RLS on error_logs
+ALTER TABLE error_logs ENABLE ROW LEVEL SECURITY;
+
+-- Error Logs policies
+CREATE POLICY "Admins can view all error logs" ON error_logs
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE id = auth.uid() AND role = 'admin'
+        )
+    );
+
+CREATE POLICY "Users can view their own error logs" ON error_logs
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "System can insert error logs" ON error_logs
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Admins can delete error logs" ON error_logs
+    FOR DELETE USING (
+        EXISTS (
+            SELECT 1 FROM profiles 
+            WHERE id = auth.uid() AND role = 'admin'
+        )
+    );

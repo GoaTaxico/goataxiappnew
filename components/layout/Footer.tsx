@@ -31,7 +31,7 @@ const footerLinks = {
   ],
 };
 
-const socialLinks = [
+const _socialLinks = [
   { name: 'Facebook', icon: Facebook, href: 'https://facebook.com/goataxi' },
   { name: 'Twitter', icon: Twitter, href: 'https://twitter.com/goataxi' },
   { name: 'Instagram', icon: Instagram, href: 'https://instagram.com/goataxi' },
@@ -172,7 +172,7 @@ export function Footer() {
 
             {/* Social Links */}
             <div className="flex gap-4">
-              {socialLinks.map((social) => (
+              {_socialLinks.map((social) => (
                 <motion.a
                   key={social.name}
                   href={social.href}

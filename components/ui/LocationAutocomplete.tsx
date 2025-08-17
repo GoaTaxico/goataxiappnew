@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { logError } from '@/utils/logger';
 
 interface LocationAutocompleteProps {
   value: string;
@@ -68,7 +69,7 @@ export function LocationAutocomplete({
     setInputValue(value);
   }, [value]);
 
-  const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInputValue(newValue);
     onChange(newValue);
@@ -101,33 +102,33 @@ export function LocationAutocomplete({
         }
       );
     } catch (error) {
-      console.error('Error fetching predictions:', error);
+      logError('Error fetching predictions', error as Error, undefined, 'LocationAutocomplete');
       setIsLoading(false);
       setPredictions([]);
     }
   };
 
-  const handlePlaceSelect = (place: Place) => {
+  const _handlePlaceSelect = (place: Place) => {
     setInputValue(place.description);
     onChange(place.description);
     setIsOpen(false);
     setPredictions([]);
   };
 
-  const handleInputFocus = () => {
+  const _handleInputFocus = () => {
     if (predictions.length > 0) {
       setIsOpen(true);
     }
   };
 
-  const handleInputBlur = () => {
+  const _handleInputBlur = () => {
     // Delay closing to allow for clicks on predictions
     setTimeout(() => {
       setIsOpen(false);
     }, 200);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const _handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setIsOpen(false);
     }
@@ -141,10 +142,10 @@ export function LocationAutocomplete({
           ref={inputRef}
           type="text"
           value={inputValue}
-          onChange={handleInputChange}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
-          onKeyDown={handleKeyDown}
+          onChange={_handleInputChange}
+          onFocus={_handleInputFocus}
+          onBlur={_handleInputBlur}
+          onKeyDown={_handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
           className={`pl-10 pr-10 ${className}`}
@@ -166,7 +167,7 @@ export function LocationAutocomplete({
             {predictions.map((place) => (
               <motion.button
                 key={place.place_id}
-                onClick={() => handlePlaceSelect(place)}
+                onClick={() => _handlePlaceSelect(place)}
                 className="w-full px-4 py-3 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none transition-colors duration-150"
                 whileHover={{ backgroundColor: '#f9fafb' }}
                 whileTap={{ backgroundColor: '#f3f4f6' }}

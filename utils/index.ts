@@ -13,7 +13,7 @@ export const formatDate = (date: string | Date): string => {
 
 export const formatTime = (time: string): string => {
   const [hours, minutes] = time.split(':');
-  const hour = parseInt(hours);
+  const hour = parseInt(hours || '0');
   const ampm = hour >= 12 ? 'PM' : 'AM';
   const displayHour = hour % 12 || 12;
   return `${displayHour}:${minutes} ${ampm}`;
@@ -24,7 +24,7 @@ export const formatDateTime = (date: string, time: string): string => {
 };
 
 export const getCurrentDate = (): string => {
-  return new Date().toISOString().split('T')[0];
+  return new Date().toISOString().split('T')[0] || '';
 };
 
 export const getCurrentTime = (): string => {
@@ -266,7 +266,9 @@ export const shuffleArray = <T>(array: T[]): T[] => {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    const temp = shuffled[i];
+    shuffled[i] = shuffled[j]!;
+    shuffled[j] = temp!;
   }
   return shuffled;
 };

@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { Car, MapPin, Calendar, Clock, Users, Search } from 'lucide-react';
 import { VehicleType, BookingFormData } from '@/types';
-import { getVehicleTypeLabel, getVehicleTypeIcon, getVehicleCapacity } from '@/utils';
+import { getVehicleTypeLabel, getVehicleCapacity } from '@/utils';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'react-hot-toast';
@@ -31,7 +31,7 @@ export function BookingForm({ className = '' }: BookingFormProps) {
       vehicle_type: 'sedan',
       pickup_location: '',
       drop_location: '',
-      pickup_date: new Date().toISOString().split('T')[0],
+      pickup_date: new Date().toISOString().split('T')[0] || '',
       pickup_time: new Date().toLocaleTimeString('en-US', {
         hour12: false,
         hour: '2-digit',
@@ -42,7 +42,7 @@ export function BookingForm({ className = '' }: BookingFormProps) {
     },
   });
 
-  const passengerCount = watch('passenger_count');
+  const _passengerCount = watch('passenger_count');
   const maxPassengers = getVehicleCapacity(selectedVehicle);
 
   const vehicleTypes: { type: VehicleType; label: string; icon: string; capacity: number }[] = [
@@ -60,11 +60,11 @@ export function BookingForm({ className = '' }: BookingFormProps) {
     setIsLoading(true);
     try {
       // Here you would typically make an API call to create the booking
-      console.log('Booking data:', {
-        ...data,
-        pickup_location: pickupLocation,
-        drop_location: dropLocation,
-      });
+      // console.log('Booking data:', {
+      //   ...data,
+      //   pickup_location: pickupLocation,
+      //   drop_location: dropLocation,
+      // });
 
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -171,7 +171,7 @@ export function BookingForm({ className = '' }: BookingFormProps) {
               {...register('pickup_date', {
                 required: 'Pickup date is required',
                 min: {
-                  value: new Date().toISOString().split('T')[0],
+                  value: new Date().toISOString().split('T')[0] || '',
                   message: 'Pickup date cannot be in the past',
                 },
               })}

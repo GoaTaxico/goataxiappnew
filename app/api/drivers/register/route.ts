@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const _body = await request.json();
     const {
       license_number,
       vehicle_type,
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       car_model_year,
       phone,
       whatsapp,
-    } = body;
+    } = _body;
 
     // Validate required fields
     if (!license_number || !vehicle_type || !car_name || !car_number || !phone || !whatsapp) {

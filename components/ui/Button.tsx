@@ -22,9 +22,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     disabled,
     ...props 
   }, ref) => {
-    const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+    const _baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
     
-    const variants = {
+    const _variants = {
       primary: 'bg-primary-600 hover:bg-primary-700 text-white focus:ring-primary-500',
       secondary: 'bg-secondary-600 hover:bg-secondary-700 text-white focus:ring-secondary-500',
       success: 'bg-success-600 hover:bg-success-700 text-white focus:ring-success-500',
@@ -33,23 +33,23 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
     };
 
-    const sizes = {
+    const _sizes = {
       sm: 'px-3 py-1.5 text-sm',
       md: 'px-4 py-2 text-base',
       lg: 'px-6 py-3 text-lg',
     };
 
-    const classes = clsx(
-      baseClasses,
-      variants[variant],
-      sizes[size],
+    const _classes = clsx(
+      _baseClasses,
+      _variants[variant],
+      _sizes[size],
       className
     );
 
     return (
       <motion.button
         ref={ref}
-        className={classes}
+        className={_classes}
         disabled={disabled || loading}
         whileHover={!disabled && !loading ? { scale: 1.02 } : {}}
         whileTap={!disabled && !loading ? { scale: 0.98 } : {}}

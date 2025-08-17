@@ -13,7 +13,7 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 });
 
 // Helper function to get user session
-export const getUserSession = async () => {
+export const _getUserSession = async () => {
   const { data: { session }, error } = await supabase.auth.getSession();
   if (error) {
     console.error('Error getting session:', error);
@@ -23,7 +23,7 @@ export const getUserSession = async () => {
 };
 
 // Helper function to get current user
-export const getCurrentUser = async () => {
+export const _getCurrentUser = async () => {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error) {
     console.error('Error getting user:', error);
@@ -33,7 +33,7 @@ export const getCurrentUser = async () => {
 };
 
 // Helper function to get user profile
-export const getUserProfile = async (userId: string) => {
+export const _getUserProfile = async (userId: string) => {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -48,7 +48,7 @@ export const getUserProfile = async (userId: string) => {
 };
 
 // Helper function to get driver profile
-export const getDriverProfile = async (userId: string) => {
+export const _getDriverProfile = async (userId: string) => {
   const { data, error } = await supabase
     .from('drivers')
     .select(`
@@ -66,7 +66,7 @@ export const getDriverProfile = async (userId: string) => {
 };
 
 // Helper function to get nearby drivers
-export const getNearbyDrivers = async (
+export const _getNearbyDrivers = async (
   latitude: number,
   longitude: number,
   vehicleType?: string,
@@ -87,7 +87,7 @@ export const getNearbyDrivers = async (
 };
 
 // Helper function to update driver location
-export const updateDriverLocation = async (
+export const _updateDriverLocation = async (
   driverId: string,
   latitude: number,
   longitude: number,
@@ -124,7 +124,7 @@ export const updateDriverLocation = async (
 };
 
 // Helper function to upload file to Supabase Storage
-export const uploadFile = async (
+export const _uploadFile = async (
   bucket: string,
   path: string,
   file: File
@@ -145,7 +145,7 @@ export const uploadFile = async (
 };
 
 // Helper function to get public URL for file
-export const getPublicUrl = (bucket: string, path: string) => {
+export const _getPublicUrl = (bucket: string, path: string) => {
   const { data } = supabase.storage
     .from(bucket)
     .getPublicUrl(path);
@@ -154,7 +154,7 @@ export const getPublicUrl = (bucket: string, path: string) => {
 };
 
 // Helper function to delete file from Supabase Storage
-export const deleteFile = async (bucket: string, path: string) => {
+export const _deleteFile = async (bucket: string, path: string) => {
   const { error } = await supabase.storage
     .from(bucket)
     .remove([path]);
@@ -168,10 +168,10 @@ export const deleteFile = async (bucket: string, path: string) => {
 };
 
 // Real-time subscription helper
-export const subscribeToRealtime = (
+export const _subscribeToRealtime = (
   table: string,
   event: 'INSERT' | 'UPDATE' | 'DELETE',
-  callback: (payload: any) => void
+  callback: (_payload: any) => void
 ) => {
   return supabase
     .channel(`${table}_changes`)
@@ -188,7 +188,7 @@ export const subscribeToRealtime = (
 };
 
 // Helper function to sign out
-export const signOut = async () => {
+export const _signOut = async () => {
   const { error } = await supabase.auth.signOut();
   if (error) {
     console.error('Error signing out:', error);

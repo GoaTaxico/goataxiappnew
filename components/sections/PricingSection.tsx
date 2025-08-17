@@ -99,7 +99,7 @@ export function PricingSection() {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="text-lg text-gray-600 max-w-2xl mx-auto"
           >
-            Choose the perfect plan for your driving business. Start with a free trial and upgrade when you're ready.
+            Choose the perfect plan for your driving business. Start with a free trial and upgrade when you&apos;re ready.
           </motion.p>
         </div>
 
