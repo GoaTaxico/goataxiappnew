@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBookings } from '@/hooks/useBookings';
 import { useDrivers } from '@/hooks/useDrivers';
 import { Button } from '@/components/ui/Button';
+import { ClientOnly } from '@/components/ui/ClientOnly';
 import { 
   Wifi, 
   MapPin, 
@@ -26,17 +27,11 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 
 export default function RealtimeDemoPage() {
-  const { user, profile } = useAuth();
   const router = useRouter();
-  const { bookings } = useBookings();
-  const { drivers } = useDrivers();
   
   const [activeTab, setActiveTab] = useState<'location' | 'notifications' | 'booking' | 'driver' | 'chat'>('location');
   const [selectedBookingId, setSelectedBookingId] = useState<string>('');
   const [selectedDriverId, setSelectedDriverId] = useState<string>('');
-
-  const recentBooking = bookings?.[0];
-  const recentDriver = drivers?.[0];
 
   const _tabs = [
     { id: 'location', label: 'Location Tracking', icon: MapPin },
@@ -77,7 +72,9 @@ export default function RealtimeDemoPage() {
               </div>
               
               <div className="flex items-center space-x-3">
-                <NotificationCenter />
+                <ClientOnly>
+                  <NotificationCenter />
+                </ClientOnly>
                 <Button
                   variant="outline"
                   size="sm"
@@ -133,11 +130,9 @@ export default function RealtimeDemoPage() {
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <LocationTracker 
-                      isDriver={profile?.role === 'driver'}
-                      driverId={profile?.role === 'user' ? recentDriver?.id : undefined}
-                      className="mb-6"
-                    />
+                    <ClientOnly>
+                      <LocationTrackerWrapper />
+                    </ClientOnly>
                     
                     <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">Location Tracking Features</h3>
@@ -213,21 +208,9 @@ export default function RealtimeDemoPage() {
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
                   >
-                    {recentBooking ? (
-                      <BookingStatusTracker 
-                        bookingId={recentBooking.id}
-                        className="mb-6"
-                      />
-                    ) : (
-                      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 text-center">
-                        <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Bookings Available</h3>
-                        <p className="text-gray-600 mb-4">Create a booking to see real-time status tracking</p>
-                        <Button onClick={() => router.push('/')}>
-                          Book a Ride
-                        </Button>
-                      </div>
-                    )}
+                    <ClientOnly>
+                      <BookingStatusWrapper />
+                    </ClientOnly>
                   </motion.div>
                 )}
 
@@ -239,19 +222,9 @@ export default function RealtimeDemoPage() {
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
                   >
-                    {recentDriver ? (
-                      <DriverStatusMonitor 
-                        driverId={recentDriver.id}
-                        showLocation={true}
-                        className="mb-6"
-                      />
-                    ) : (
-                      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 text-center">
-                        <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Drivers Available</h3>
-                        <p className="text-gray-600">No drivers are currently registered in the system</p>
-                      </div>
-                    )}
+                    <ClientOnly>
+                      <DriverStatusWrapper />
+                    </ClientOnly>
                   </motion.div>
                 )}
 
@@ -374,34 +347,121 @@ export default function RealtimeDemoPage() {
                 transition={{ delay: 0.4 }}
               >
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Account</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Role</span>
-                    <span className="text-sm text-gray-900 capitalize">{profile?.role || 'User'}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Name</span>
-                    <span className="text-sm text-gray-900">{profile?.full_name || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">Email</span>
-                    <span className="text-sm text-gray-900">{user?.email || 'N/A'}</span>
-                  </div>
-                </div>
+                <ClientOnly>
+                  <UserInfoWrapper />
+                </ClientOnly>
               </motion.div>
             </div>
           </div>
         </div>
 
         {/* Chat System (floating) */}
-        {recentDriver && (
-          <ChatSystem
-            receiverId={recentDriver.user_id}
-            receiverName={recentDriver.profile?.full_name}
-            receiverRole="driver"
-          />
-        )}
+        <ClientOnly>
+          <ChatSystemWrapper />
+        </ClientOnly>
       </div>
     </AuthenticatedRoute>
   );
+}
+
+// Wrapper components to handle hooks safely
+function LocationTrackerWrapper() {
+  const { profile } = useAuth();
+  const { drivers } = useDrivers();
+  const recentDriver = drivers?.[0];
+
+  return (
+    <LocationTracker 
+      isDriver={profile?.role === 'driver'}
+      driverId={profile?.role === 'user' ? recentDriver?.id : undefined}
+      className="mb-6"
+    />
+  );
+}
+
+function BookingStatusWrapper() {
+  const { bookings } = useBookings();
+  const router = useRouter();
+  const recentBooking = bookings?.[0];
+
+  if (recentBooking) {
+    return (
+      <BookingStatusTracker 
+        bookingId={recentBooking.id}
+        className="mb-6"
+      />
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 text-center">
+      <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2">No Bookings Available</h3>
+      <p className="text-gray-600 mb-4">Create a booking to see real-time status tracking</p>
+      <Button onClick={() => router.push('/')}>
+        Book a Ride
+      </Button>
+    </div>
+  );
+}
+
+function DriverStatusWrapper() {
+  const { drivers } = useDrivers();
+  const recentDriver = drivers?.[0];
+
+  if (recentDriver) {
+    return (
+      <DriverStatusMonitor 
+        driverId={recentDriver.id}
+        showLocation={true}
+        className="mb-6"
+      />
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 text-center">
+      <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2">No Drivers Available</h3>
+      <p className="text-gray-600">No drivers are currently registered in the system</p>
+    </div>
+  );
+}
+
+function UserInfoWrapper() {
+  const { user, profile } = useAuth();
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Role</span>
+        <span className="text-sm text-gray-900 capitalize">{profile?.role || 'User'}</span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Name</span>
+        <span className="text-sm text-gray-900">{profile?.full_name || 'N/A'}</span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Email</span>
+        <span className="text-sm text-gray-900">{user?.email || 'N/A'}</span>
+      </div>
+    </div>
+  );
+}
+
+function ChatSystemWrapper() {
+  const { drivers } = useDrivers();
+  const recentDriver = drivers?.[0];
+
+  if (recentDriver) {
+    return (
+      <ChatSystem
+        receiverId={recentDriver.user_id}
+        receiverName={recentDriver.profile?.full_name}
+        receiverRole="driver"
+      />
+    );
+  }
+
+  return null;
 }

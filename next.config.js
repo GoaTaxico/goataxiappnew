@@ -10,10 +10,6 @@ const nextConfig = {
     RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
     RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
   },
-  // Handle static generation errors gracefully
-  experimental: {
-    // Remove invalid options
-  },
   // Configure pages that should be dynamic
   async headers() {
     return [
@@ -22,12 +18,28 @@ const nextConfig = {
         headers: [
           {
             key: 'Cache-Control',
-            value: 'no-store, must-revalidate',
+            value: 'no-cache, no-store, must-revalidate',
           },
         ],
       },
     ];
   },
-}
+  // Handle static generation errors gracefully
+  experimental: {
+    // Remove invalid options
+  },
+  // Configure webpack for better error handling
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    return config;
+  },
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
