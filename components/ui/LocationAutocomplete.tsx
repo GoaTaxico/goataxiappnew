@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { MapPin, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { logError } from '@/utils/logger';
+import { MapPin, Search, X, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 
 interface LocationAutocompleteProps {
   value: string;
-  onChange: (value: string) => void;
+  onChange: (location: { name: string; lat: number; lng: number }) => void;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
@@ -19,6 +19,12 @@ interface Place {
   structured_formatting: {
     main_text: string;
     secondary_text: string;
+  };
+  geometry: {
+    location: {
+      lat: number;
+      lng: number;
+    };
   };
 }
 
@@ -33,11 +39,19 @@ export function LocationAutocomplete({
   const [predictions, setPredictions] = useState<Place[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [inputValue, setInputValue] = useState(value);
+  const [isHydrated, setIsHydrated] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteService = useRef<any>(null);
   const placesService = useRef<any>(null);
 
+  // Mark as hydrated after first render
   useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
     // Initialize Google Places API
     const initGooglePlaces = () => {
       if (window.google && window.google.maps && window.google.maps.places) {
@@ -63,139 +77,171 @@ export function LocationAutocomplete({
     return () => {
       // Cleanup if needed
     };
-  }, []);
+  }, [isHydrated]);
 
   useEffect(() => {
     setInputValue(value);
   }, [value]);
 
-  const _handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setInputValue(newValue);
-    onChange(newValue);
+  const _handleInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setInputValue(query);
+    setIsOpen(true);
 
-    if (!newValue.trim() || !autocompleteService.current) {
+    if (!query.trim() || !autocompleteService.current) {
       setPredictions([]);
-      setIsOpen(false);
       return;
     }
 
     setIsLoading(true);
-    setIsOpen(true);
 
     try {
-      const request = {
-        input: newValue,
-        componentRestrictions: { country: 'in' }, // Restrict to India
-        types: ['geocode', 'establishment'], // Include both addresses and places
+      const response = await new Promise<any>((resolve, reject) => {
+        autocompleteService.current.getPlacePredictions(
+          {
+            input: query,
+            types: ['establishment', 'geocode'],
+          },
+          (predictions: any[], status: any) => {
+            if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+              resolve(predictions);
+            } else {
+              reject(new Error(`Places API error: ${status}`));
+            }
+          }
+        );
+      });
+
+      setPredictions(response);
+    } catch (error) {
+      console.error('Error fetching predictions:', error);
+      setPredictions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const _handlePlaceSelect = useCallback(async (place: Place) => {
+    if (!placesService.current) return;
+
+    try {
+      const details = await new Promise<any>((resolve, reject) => {
+        placesService.current.getDetails(
+          {
+            placeId: place.place_id,
+            fields: ['name', 'geometry', 'formatted_address'],
+          },
+          (result: any, status: any) => {
+            if (status === window.google.maps.places.PlacesServiceStatus.OK) {
+              resolve(result);
+            } else {
+              reject(new Error(`Places API error: ${status}`));
+            }
+          }
+        );
+      });
+
+      const location = {
+        name: details.name || place.structured_formatting.main_text,
+        lat: details.geometry.location.lat(),
+        lng: details.geometry.location.lng(),
       };
 
-      autocompleteService.current.getPlacePredictions(
-        request,
-        (predictions: any, status: any) => {
-          setIsLoading(false);
-          if (status === 'OK' && predictions) {
-            setPredictions(predictions);
-          } else {
-            setPredictions([]);
-          }
-        }
-      );
-    } catch (error) {
-      logError('Error fetching predictions', error as Error, undefined, 'LocationAutocomplete');
-      setIsLoading(false);
+      onChange(location);
+      setInputValue(location.name);
+      setIsOpen(false);
       setPredictions([]);
+    } catch (error) {
+      console.error('Error getting place details:', error);
     }
-  };
+  }, [onChange]);
 
-  const _handlePlaceSelect = (place: Place) => {
-    setInputValue(place.description);
-    onChange(place.description);
-    setIsOpen(false);
+  const _handleClear = useCallback(() => {
+    setInputValue('');
     setPredictions([]);
-  };
+    setIsOpen(false);
+    onChange({ name: '', lat: 0, lng: 0 });
+  }, [onChange]);
 
-  const _handleInputFocus = () => {
-    if (predictions.length > 0) {
+  const _handleFocus = useCallback(() => {
+    if (inputValue.trim() && predictions.length > 0) {
       setIsOpen(true);
     }
-  };
+  }, [inputValue, predictions]);
 
-  const _handleInputBlur = () => {
+  const _handleBlur = useCallback(() => {
     // Delay closing to allow for clicks on predictions
-    setTimeout(() => {
-      setIsOpen(false);
-    }, 200);
-  };
-
-  const _handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setIsOpen(false);
-    }
-  };
+    setTimeout(() => setIsOpen(false), 200);
+  }, []);
 
   return (
-    <div className="relative">
+    <div className={`relative ${className}`}>
       <div className="relative">
-        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Search className="h-5 w-5 text-gray-400" />
+        </div>
         <input
           ref={inputRef}
           type="text"
           value={inputValue}
           onChange={_handleInputChange}
-          onFocus={_handleInputFocus}
-          onBlur={_handleInputBlur}
-          onKeyDown={_handleKeyDown}
+          onFocus={_handleFocus}
+          onBlur={_handleBlur}
           placeholder={placeholder}
-          disabled={disabled}
-          className={`pl-10 pr-10 ${className}`}
+          disabled={disabled || !isHydrated}
+          className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
         />
-        {isLoading && (
-          <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 animate-spin" />
+        {inputValue && (
+          <button
+            onClick={_handleClear}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center"
+          >
+            <X className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+          </button>
         )}
       </div>
 
       <AnimatePresence>
-        {isOpen && predictions.length > 0 && (
+        {isOpen && (predictions.length > 0 || isLoading) && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
             className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
           >
-            {predictions.map((place) => (
-              <motion.button
-                key={place.place_id}
-                onClick={() => _handlePlaceSelect(place)}
-                className="w-full px-4 py-3 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none transition-colors duration-150"
-                whileHover={{ backgroundColor: '#f9fafb' }}
-                whileTap={{ backgroundColor: '#f3f4f6' }}
-              >
-                <div className="font-medium text-gray-900">
-                  {place.structured_formatting.main_text}
-                </div>
-                <div className="text-sm text-gray-500">
-                  {place.structured_formatting.secondary_text}
-                </div>
-              </motion.button>
-            ))}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                <span className="ml-2 text-sm text-gray-500">Searching...</span>
+              </div>
+            ) : (
+              <div className="py-1">
+                {predictions.map((prediction) => (
+                  <button
+                    key={prediction.place_id}
+                    onClick={() => _handlePlaceSelect(prediction)}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {prediction.structured_formatting.main_text}
+                        </p>
+                        {prediction.structured_formatting.secondary_text && (
+                          <p className="text-sm text-gray-500 truncate">
+                            {prediction.structured_formatting.secondary_text}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
-
-      {isOpen && predictions.length === 0 && !isLoading && inputValue.trim() && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4"
-        >
-          <div className="text-center text-gray-500">
-            No locations found. Try a different search term.
-          </div>
-        </motion.div>
-      )}
     </div>
   );
 }

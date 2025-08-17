@@ -11,12 +11,24 @@ interface PWAState {
 export function usePWA() {
   const [state, setState] = useState<PWAState>({
     isInstalled: false,
-    isOnline: navigator.onLine,
+    isOnline: false, // Start with false to avoid hydration mismatch
     hasUpdate: false,
-    isSupported: 'serviceWorker' in navigator && 'PushManager' in window,
+    isSupported: false, // Start with false to avoid hydration mismatch
   });
 
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Mark as hydrated after first render
+  useEffect(() => {
+    setIsHydrated(true);
+    // Update state with actual browser values after hydration
+    setState(prev => ({
+      ...prev,
+      isOnline: navigator.onLine,
+      isSupported: 'serviceWorker' in navigator && 'PushManager' in window,
+    }));
+  }, []);
 
   // Update the app
   const updateApp = useCallback(() => {
@@ -48,16 +60,16 @@ export function usePWA() {
 
   // Check if app is installed
   const checkInstallation = useCallback(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && isHydrated) {
       const isInstalled = window.matchMedia('(display-mode: standalone)').matches ||
                          (window.navigator as any).standalone === true;
       setState(prev => ({ ...prev, isInstalled }));
     }
-  }, []);
+  }, [isHydrated]);
 
   // Register service worker
   const registerServiceWorker = useCallback(async () => {
-    if (!state.isSupported) return;
+    if (!state.isSupported || !isHydrated) return;
 
     try {
       const reg = await navigator.serviceWorker.register('/sw.js');
@@ -86,11 +98,11 @@ export function usePWA() {
     } catch (error) {
       console.error('Service Worker registration failed:', error);
     }
-  }, [state.isSupported, showUpdateNotification]);
+  }, [state.isSupported, showUpdateNotification, isHydrated]);
 
   // Request notification permission
   const requestNotificationPermission = useCallback(async () => {
-    if (!state.isSupported) return false;
+    if (!state.isSupported || !isHydrated) return false;
 
     try {
       const permission = await Notification.requestPermission();
@@ -99,11 +111,11 @@ export function usePWA() {
       console.error('Error requesting notification permission:', error);
       return false;
     }
-  }, [state.isSupported]);
+  }, [state.isSupported, isHydrated]);
 
   // Send push notification
   const sendPushNotification = useCallback(async (title: string, options?: NotificationOptions) => {
-    if (!state.isSupported || Notification.permission !== 'granted') return false;
+    if (!state.isSupported || Notification.permission !== 'granted' || !isHydrated) return false;
 
     try {
       const notification = new Notification(title, {
@@ -122,11 +134,11 @@ export function usePWA() {
       console.error('Error sending push notification:', error);
       return false;
     }
-  }, [state.isSupported]);
+  }, [state.isSupported, isHydrated]);
 
   // Subscribe to push notifications
   const subscribeToPushNotifications = useCallback(async () => {
-    if (!state.isSupported || !registration) return null;
+    if (!state.isSupported || !registration || !isHydrated) return null;
 
     try {
       const permission = await requestNotificationPermission();
@@ -148,11 +160,11 @@ export function usePWA() {
       console.error('Error subscribing to push notifications:', error);
       return null;
     }
-  }, [state.isSupported, registration, requestNotificationPermission]);
+  }, [state.isSupported, registration, requestNotificationPermission, isHydrated]);
 
   // Install PWA
   const installPWA = useCallback(() => {
-    if (typeof window !== 'undefined' && (window as any).deferredPrompt) {
+    if (typeof window !== 'undefined' && (window as any).deferredPrompt && isHydrated) {
       (window as any).deferredPrompt.prompt();
       (window as any).deferredPrompt.userChoice.then((choiceResult: any) => {
         if (choiceResult.outcome === 'accepted') {
@@ -162,10 +174,12 @@ export function usePWA() {
         (window as any).deferredPrompt = null;
       });
     }
-  }, []);
+  }, [isHydrated]);
 
   // Handle online/offline status
   useEffect(() => {
+    if (!isHydrated) return;
+
     const handleOnline = () => setState(prev => ({ ...prev, isOnline: true }));
     const handleOffline = () => setState(prev => ({ ...prev, isOnline: false }));
 
@@ -176,10 +190,12 @@ export function usePWA() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);
+  }, [isHydrated]);
 
   // Handle beforeinstallprompt event
   useEffect(() => {
+    if (!isHydrated) return;
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       (window as any).deferredPrompt = e;
@@ -190,13 +206,15 @@ export function usePWA() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
-  }, []);
+  }, [isHydrated]);
 
   // Initialize PWA
   useEffect(() => {
+    if (!isHydrated) return;
+    
     checkInstallation();
     registerServiceWorker();
-  }, [checkInstallation, registerServiceWorker]);
+  }, [checkInstallation, registerServiceWorker, isHydrated]);
 
   return {
     ...state,
@@ -206,14 +224,17 @@ export function usePWA() {
     sendPushNotification,
     subscribeToPushNotifications,
     installPWA,
+    isHydrated,
   };
 }
 
 // Hook for background sync
 export function useBackgroundSync() {
   const [isSupported, setIsSupported] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
+    setIsHydrated(true);
     setIsSupported('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype);
   }, []);
 
@@ -233,6 +254,7 @@ export function useBackgroundSync() {
 
   return {
     isSupported,
+    isHydrated,
     // registerBackgroundSync,
   };
 }
@@ -240,13 +262,15 @@ export function useBackgroundSync() {
 // Hook for offline storage
 export function useOfflineStorage() {
   const [isSupported, setIsSupported] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
+    setIsHydrated(true);
     setIsSupported('indexedDB' in window);
   }, []);
 
   const storeData = useCallback(async (key: string, data: any) => {
-    if (!isSupported) return false;
+    if (!isSupported || !isHydrated) return false;
 
     try {
       const db = await openDB('goa-taxi-offline', 1, (db) => {
@@ -267,10 +291,10 @@ export function useOfflineStorage() {
       console.error('Error storing data offline:', error);
       return false;
     }
-  }, [isSupported]);
+  }, [isSupported, isHydrated]);
 
   const getData = useCallback(async (key: string) => {
-    if (!isSupported) return null;
+    if (!isSupported || !isHydrated) return null;
 
     try {
       const db = await openDB('goa-taxi-offline', 1);
@@ -286,10 +310,10 @@ export function useOfflineStorage() {
       console.error('Error retrieving offline data:', error);
       return null;
     }
-  }, [isSupported]);
+  }, [isSupported, isHydrated]);
 
   const clearData = useCallback(async (key?: string) => {
-    if (!isSupported) return false;
+    if (!isSupported || !isHydrated) return false;
 
     try {
       const db = await openDB('goa-taxi-offline', 1);
@@ -313,10 +337,11 @@ export function useOfflineStorage() {
       console.error('Error clearing offline data:', error);
       return false;
     }
-  }, [isSupported]);
+  }, [isSupported, isHydrated]);
 
   return {
     isSupported,
+    isHydrated,
     storeData,
     getData,
     clearData,

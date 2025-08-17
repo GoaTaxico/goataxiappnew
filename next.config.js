@@ -12,11 +12,21 @@ const nextConfig = {
   },
   // Handle static generation errors gracefully
   experimental: {
-    missingSuspenseWithCSRBailout: false,
+    // Remove invalid options
   },
-  // Skip static generation for problematic pages
-  async generateStaticParams() {
-    return [];
+  // Configure pages that should be dynamic
+  async headers() {
+    return [
+      {
+        source: '/admin/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, must-revalidate',
+          },
+        ],
+      },
+    ];
   },
 }
 

@@ -14,11 +14,17 @@ interface BookingFormProps {
   className?: string;
 }
 
+interface Location {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
 export function BookingForm({ className = '' }: BookingFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>('sedan');
-  const [pickupLocation, setPickupLocation] = useState('');
-  const [dropLocation, setDropLocation] = useState('');
+  const [pickupLocation, setPickupLocation] = useState<Location>({ name: '', lat: 0, lng: 0 });
+  const [dropLocation, setDropLocation] = useState<Location>({ name: '', lat: 0, lng: 0 });
 
   const {
     register,
@@ -52,7 +58,7 @@ export function BookingForm({ className = '' }: BookingFormProps) {
   ];
 
   const onSubmit = async (data: BookingFormData) => {
-    if (!pickupLocation || !dropLocation) {
+    if (!pickupLocation.name || !dropLocation.name) {
       toast.error('Please select pickup and drop locations');
       return;
     }
@@ -62,8 +68,10 @@ export function BookingForm({ className = '' }: BookingFormProps) {
       // Here you would typically make an API call to create the booking
       // console.log('Booking data:', {
       //   ...data,
-      //   pickup_location: pickupLocation,
-      //   drop_location: dropLocation,
+      //   pickup_location: pickupLocation.name,
+      //   drop_location: dropLocation.name,
+      //   pickup_coordinates: { lat: pickupLocation.lat, lng: pickupLocation.lng },
+      //   drop_coordinates: { lat: dropLocation.lat, lng: dropLocation.lng },
       // });
 
       // Simulate API call
@@ -99,23 +107,21 @@ export function BookingForm({ className = '' }: BookingFormProps) {
               <motion.button
                 key={vehicle.type}
                 type="button"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   setSelectedVehicle(vehicle.type);
                   setValue('vehicle_type', vehicle.type);
                 }}
                 className={`p-4 rounded-lg border-2 transition-all duration-200 ${
                   selectedVehicle === vehicle.type
-                    ? 'border-primary-500 bg-primary-50 text-primary-700'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-200 hover:border-gray-300'
                 }`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
                 <div className="text-2xl mb-2">{vehicle.icon}</div>
                 <div className="font-medium">{vehicle.label}</div>
-                <div className="text-sm text-gray-500">
-                  Up to {vehicle.capacity} passengers
-                </div>
+                <div className="text-sm text-gray-500">{vehicle.capacity} passengers</div>
               </motion.button>
             ))}
           </div>
@@ -131,7 +137,7 @@ export function BookingForm({ className = '' }: BookingFormProps) {
             </label>
             <LocationAutocomplete
               placeholder="Enter pickup location"
-              value={pickupLocation}
+              value={pickupLocation.name}
               onChange={setPickupLocation}
               className="input-field"
             />
@@ -148,7 +154,7 @@ export function BookingForm({ className = '' }: BookingFormProps) {
             </label>
             <LocationAutocomplete
               placeholder="Enter drop location"
-              value={dropLocation}
+              value={dropLocation.name}
               onChange={setDropLocation}
               className="input-field"
             />
@@ -243,34 +249,24 @@ export function BookingForm({ className = '' }: BookingFormProps) {
         </div>
 
         {/* Submit Button */}
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="pt-4"
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="w-full"
+          size="lg"
         >
-          <Button
-            type="submit"
-            disabled={isLoading || !pickupLocation || !dropLocation}
-            className="w-full py-4 text-lg font-semibold"
-          >
-            {isLoading ? (
-              <div className="flex items-center justify-center gap-2">
-                <div className="spinner w-5 h-5"></div>
-                Finding Drivers...
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-2">
-                <Search className="w-5 h-5" />
-                Find Nearby Drivers
-              </div>
-            )}
-          </Button>
-        </motion.div>
-
-        {/* Info Text */}
-        <div className="text-center text-sm text-gray-500">
-          <p>No booking fees • Negotiate directly with drivers • Instant connection</p>
-        </div>
+          {isLoading ? (
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Finding Drivers...</span>
+            </div>
+          ) : (
+            <>
+              <Search className="w-5 h-5 mr-2" />
+              Find Available Drivers
+            </>
+          )}
+        </Button>
       </form>
     </motion.div>
   );

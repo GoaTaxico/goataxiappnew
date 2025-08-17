@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '@/components/providers/AuthProvider'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
+import { ClientOnly } from '@/components/ui/ClientOnly'
 
 const _inter = Inter({ subsets: ['latin'] })
 
@@ -144,7 +145,9 @@ export default function RootLayout({
                 },
               }}
             />
-            <InstallPrompt />
+            <ClientOnly>
+              <InstallPrompt />
+            </ClientOnly>
           </AuthProvider>
         </QueryProvider>
       </body>

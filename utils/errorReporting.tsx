@@ -292,8 +292,12 @@ export function useErrorReporting() {
   };
 }
 
-// Global error handlers
-if (typeof window !== 'undefined') {
+// Initialize global error handlers only after hydration
+let isInitialized = false;
+
+export function initializeErrorHandlers() {
+  if (typeof window === 'undefined' || isInitialized) return;
+
   // Handle unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
     errorReporting.captureError(
@@ -319,4 +323,16 @@ if (typeof window !== 'undefined') {
       'high'
     );
   });
+
+  isInitialized = true;
+}
+
+// Initialize error handlers when the module is imported
+if (typeof window !== 'undefined') {
+  // Use requestIdleCallback or setTimeout to ensure it runs after hydration
+  if ('requestIdleCallback' in window) {
+    (window as any).requestIdleCallback(() => initializeErrorHandlers());
+  } else {
+    setTimeout(initializeErrorHandlers, 0);
+  }
 }
