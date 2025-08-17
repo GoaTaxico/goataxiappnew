@@ -51,6 +51,7 @@ export function InstallPrompt({ className = '' }: InstallPromptProps) {
         return () => clearTimeout(timer);
       }
     }
+    return undefined;
   }, [isInstalled, isSupported]);
 
   // Check notification permission
