@@ -109,9 +109,8 @@ export function usePWA() {
       const notification = new Notification(title, {
         icon: '/android-chrome-192x192.png',
         badge: '/favicon-32x32.png',
-        vibrate: [100, 50, 100],
         ...options,
-      });
+      } as NotificationOptions & { vibrate?: number[] });
 
       notification.onclick = () => {
         window.focus();
@@ -133,9 +132,15 @@ export function usePWA() {
       const permission = await requestNotificationPermission();
       if (!permission) return null;
 
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidKey) {
+        console.error('VAPID public key not found');
+        return null;
+      }
+
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+        applicationServerKey: vapidKey,
       });
 
       return subscription;
@@ -212,22 +217,23 @@ export function useBackgroundSync() {
     setIsSupported('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype);
   }, []);
 
-  const registerBackgroundSync = useCallback(async (tag: string) => {
-    if (!isSupported) return false;
+  // Background sync is not widely supported, commenting out for now
+  // const registerBackgroundSync = useCallback(async (tag: string) => {
+  //   if (!isSupported) return false;
 
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      await registration.sync.register(tag);
-      return true;
-    } catch (error) {
-      console.error('Error registering background sync:', error);
-      return false;
-    }
-  }, [isSupported]);
+  //   try {
+  //     const registration = await navigator.serviceWorker.ready;
+  //     await registration.sync.register(tag);
+  //     return true;
+  //   } catch (error) {
+  //     console.error('Error registering background sync:', error);
+  //     return false;
+  //   }
+  // }, [isSupported]);
 
   return {
     isSupported,
-    registerBackgroundSync,
+    // registerBackgroundSync,
   };
 }
 
@@ -243,16 +249,20 @@ export function useOfflineStorage() {
     if (!isSupported) return false;
 
     try {
-      const db = await openDB('goa-taxi-offline', 1, {
-        upgrade(db) {
-          if (!db.objectStoreNames.contains('data')) {
-            db.createObjectStore('data', { keyPath: 'key' });
-          }
-        },
+      const db = await openDB('goa-taxi-offline', 1, (db) => {
+        if (!db.objectStoreNames.contains('data')) {
+          db.createObjectStore('data', { keyPath: 'key' });
+        }
       });
 
-      await db.put('data', { key, data, timestamp: Date.now() });
-      return true;
+      const transaction = db.transaction(['data'], 'readwrite');
+      const store = transaction.objectStore('data');
+      const request = store.put({ key, data, timestamp: Date.now() });
+      
+      return new Promise<boolean>((resolve, reject) => {
+        request.onsuccess = () => resolve(true);
+        request.onerror = () => reject(request.error);
+      });
     } catch (error) {
       console.error('Error storing data offline:', error);
       return false;
@@ -264,8 +274,14 @@ export function useOfflineStorage() {
 
     try {
       const db = await openDB('goa-taxi-offline', 1);
-      const result = await db.get('data', key);
-      return result?.data || null;
+      const transaction = db.transaction(['data'], 'readonly');
+      const store = transaction.objectStore('data');
+      const request = store.get(key);
+      
+      return new Promise<any>((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result?.data || null);
+        request.onerror = () => reject(request.error);
+      });
     } catch (error) {
       console.error('Error retrieving offline data:', error);
       return null;
@@ -277,12 +293,22 @@ export function useOfflineStorage() {
 
     try {
       const db = await openDB('goa-taxi-offline', 1);
+      const transaction = db.transaction(['data'], 'readwrite');
+      const store = transaction.objectStore('data');
+      
       if (key) {
-        await db.delete('data', key);
+        const request = store.delete(key);
+        return new Promise<boolean>((resolve, reject) => {
+          request.onsuccess = () => resolve(true);
+          request.onerror = () => reject(request.error);
+        });
       } else {
-        await db.clear('data');
+        const request = store.clear();
+        return new Promise<boolean>((resolve, reject) => {
+          request.onsuccess = () => resolve(true);
+          request.onerror = () => reject(request.error);
+        });
       }
-      return true;
     } catch (error) {
       console.error('Error clearing offline data:', error);
       return false;

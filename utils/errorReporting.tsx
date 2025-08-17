@@ -44,7 +44,7 @@ class ErrorReportingService {
 
     const errorReport: ErrorReport = {
       message: error.message,
-      stack: error.stack,
+      stack: error.stack || '',
       name: error.name,
       context: {
         ...context,

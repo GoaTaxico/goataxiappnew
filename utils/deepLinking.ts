@@ -96,6 +96,8 @@ class DeepLinkingService {
       const patternSegment = patternSegments[i];
       const pathSegment = pathSegments[i];
       
+      if (!patternSegment) continue;
+      
       if (patternSegment.startsWith(':')) {
         // Dynamic parameter
         continue;
@@ -117,9 +119,13 @@ class DeepLinkingService {
       const patternSegment = patternSegments[i];
       const pathSegment = pathSegments[i];
       
+      if (!patternSegment) continue;
+      
       if (patternSegment.startsWith(':')) {
         const paramName = patternSegment.slice(1);
-        params[paramName] = pathSegment;
+        if (pathSegment) {
+          params[paramName] = pathSegment;
+        }
       }
     }
     
@@ -267,7 +273,7 @@ const goaTaxiDeepLinkConfig: DeepLinkConfig = {
         // Apply promo code
         if (typeof window !== 'undefined') {
           // Store promo code in localStorage for the booking flow
-          localStorage.setItem('promoCode', params.code);
+          localStorage.setItem('promoCode', params.code || '');
           window.location.href = '/dashboard/book';
         }
       }
@@ -327,5 +333,5 @@ export function createPaymentLink(paymentId: string): string {
 }
 
 export function createPromoLink(promoCode: string): string {
-  return deepLinking.createDeepLink('/promo', { code: promoCode });
+  return deepLinking.createDeepLink('/promo', { code: promoCode || '' });
 }

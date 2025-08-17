@@ -20,7 +20,7 @@ interface ShareButtonProps {
 interface ShareOption {
   id: string;
   name: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<any>;
   color: string;
   action: () => void;
 }
