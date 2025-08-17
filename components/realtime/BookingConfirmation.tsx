@@ -146,7 +146,7 @@ export function BookingConfirmation({
   const handleNavigateToDriver = () => {
     // Parse driver location coordinates
     const locationMatch = driver.current_location?.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
-    if (locationMatch) {
+    if (locationMatch && locationMatch[1] && locationMatch[2]) {
       const coordinates = {
         lat: parseFloat(locationMatch[1]),
         lng: parseFloat(locationMatch[2])
@@ -158,7 +158,7 @@ export function BookingConfirmation({
       });
     } else {
       // Fallback to Google Maps search
-      const searchQuery = encodeURIComponent(driver.current_location);
+      const searchQuery = encodeURIComponent(driver.current_location || '');
       window.open(`https://www.google.com/maps/search/${searchQuery}`, '_blank');
     }
   };
