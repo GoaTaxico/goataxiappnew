@@ -1,6 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { unstable_noStore as noStore } from 'next/cache';
+
+// Force dynamic rendering
+noStore();
 import { motion } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardStats, useRecentActivity } from '@/hooks/useAnalytics';

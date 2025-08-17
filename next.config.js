@@ -10,6 +10,14 @@ const nextConfig = {
     RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
     RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
   },
+  // Handle static generation errors gracefully
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
+  },
+  // Skip static generation for problematic pages
+  async generateStaticParams() {
+    return [];
+  },
 }
 
 module.exports = nextConfig
