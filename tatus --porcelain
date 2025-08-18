@@ -1,0 +1,5 @@
+[33m92fbc85[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix hydration errors: wrap components with ClientOnly, fix Next.js config, and update dashboard/driver pages to prevent server/client mismatches
+[33m181f997[m Fix hydration errors: add ClientOnly wrapper, fix usePWA hook, update LocationTracker and LocationAutocomplete, fix BookingForm types, and update error reporting
+[33m36e0d1d[m Add dynamic rendering to admin pages to fix static generation errors
+[33mcc1a0b8[m Fix all TypeScript errors: InstallPrompt, BookingConfirmation, ShareButton, usePWA, deepLinking, and errorReporting components
+[33m3a03488[m Fix TypeScript error in BookingConfirmation component - add proper null checks for locationMatch
